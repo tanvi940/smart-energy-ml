@@ -1,0 +1,16 @@
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+energy_history.db
+
+.DS_Store
+
+# Dataset
+data/household_power_consumption.txt
+
+# Generated data files
+data/cleaned_energy.csv
+data/features_energy.csv
+data/anomaly_results.csv
