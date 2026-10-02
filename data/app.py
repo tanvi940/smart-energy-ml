@@ -1,14 +1,19 @@
+
 from flask import Flask, request, jsonify
 import joblib
-from database import create_table, save_prediction
+import os
+
+from database import (
+    create_table,
+    save_prediction,
+    get_predictions
+)
 
 app = Flask(__name__)
 
-# Load ML models
 energy_model = joblib.load("energy_model.pkl")
 anomaly_model = joblib.load("anomaly_model.pkl")
 
-# Create database table
 create_table()
 
 
@@ -22,7 +27,6 @@ def predict():
 
     data = request.get_json()
 
-    # Features for energy prediction
     energy_features = [[
         data["Hour"],
         data["Day"],
@@ -32,12 +36,10 @@ def predict():
         data["Lag_24"]
     ]]
 
-    # Predict energy consumption
     predicted_energy = energy_model.predict(
         energy_features
     )[0]
 
-    # Features for anomaly detection
     anomaly_features = [[
         data["Global_active_power"],
         data["Hour"],
@@ -46,7 +48,6 @@ def predict():
         data["Lag_24"]
     ]]
 
-    # Detect anomaly
     anomaly_prediction = anomaly_model.predict(
         anomaly_features
     )[0]
@@ -56,19 +57,16 @@ def predict():
     else:
         status = "Normal"
 
-    # Actual energy from incoming reading
     actual_energy = float(
         data["Global_active_power"]
     )
 
-    # Save prediction to database
     save_prediction(
         actual_energy,
         float(predicted_energy),
         status
     )
 
-    # Send result back
     return jsonify({
         "actual_energy": actual_energy,
         "predicted_energy": float(predicted_energy),
@@ -76,9 +74,27 @@ def predict():
     })
 
 
+@app.route("/history", methods=["GET"])
+def history():
+
+    data = get_predictions()
+
+    return jsonify([
+        {
+            "id": row[0],
+            "timestamp": row[1],
+            "actual_energy": row[2],
+            "predicted_energy": row[3],
+            "status": row[4]
+        }
+        for row in data
+    ])
+
+
 if __name__ == "__main__":
     app.run(
-        host="127.0.0.1",
-        port=5000,
-        debug=True
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
     )
+
